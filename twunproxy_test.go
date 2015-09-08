@@ -100,7 +100,7 @@ func TestDoInstanceWritesToChannelAndReturnsOnAcceptedResult(t *testing.T) {
 		for results != nil {
 			select {
 			case res = <-results:
-				stop <- true
+				// We don't set 'stop' to true since the request is successful and should stop in its own.
 				results = nil
 			}
 		}
