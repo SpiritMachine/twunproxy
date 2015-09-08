@@ -59,14 +59,14 @@ func TestDoInstanceReturnsOnBadCommandResult(t *testing.T) {
 
 	var res RedisReturn
 	go func() {
-		for results != nil {
-			select {
-			case res = <-results:
-				results = nil
-			}
+		for rr := range results {
+			res = rr
+			stop <- true
 		}
 	}()
+
 	wg.Wait()
+	close(results)
 
 	if res.val != nil {
 		t.Fatal("Unexpected Redis return value.")
@@ -97,15 +97,14 @@ func TestDoInstanceWritesToChannelAndReturnsOnAcceptedResult(t *testing.T) {
 
 	var res RedisReturn
 	go func() {
-		for results != nil {
-			select {
-			case res = <-results:
-				// We don't set 'stop' to true since the request is successful and should stop in its own.
-				results = nil
-			}
+		for rr := range results {
+			res = rr
+			stop <- true
 		}
 	}()
+
 	wg.Wait()
+	close(results)
 
 	if !res.val.(bool) {
 		t.Fatal("Unexpected Redis return value.")
@@ -132,8 +131,11 @@ func TestDoExecutesCommandOnAllProxyPools(t *testing.T) {
 	mockConn3.EXPECT().Close()
 
 	proxy := getMockProxy(mockPool1, mockPool2, mockPool3)
+	canMap := func(v interface{}) bool {
+		return v != nil
+	}
 
-	resp, err := proxy.do(getRedisCmd(), func(v interface{}) bool { return v != nil })
+	resp, err := proxy.do(getRedisCmd(), canMap)
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

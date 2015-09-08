@@ -131,31 +131,29 @@ func (r *ProxyConn) do(cmd *RedisCmd, canMap func(interface{}) bool) (interface{
 
 	// Start the command on each of the pools and receive results on a channel.
 	results := make(chan RedisReturn)
-	stop := make(chan bool)
 	wg := new(sync.WaitGroup)
+	stop := make([]chan bool, len(r.Pools))
 	for i := range r.Pools {
+		stop[i] = make(chan bool, 1)
 		wg.Add(1)
-		go r.doInstance(i, cmd, canMap, results, stop, wg)
+		go r.doInstance(i, cmd, canMap, results, stop[i], wg)
 	}
 
 	// Wait for the first accepted Redis command result then send a message on the stop channel to other Goroutines.
 	// Goroutines started above will detect this condition and complete.
 	res := RedisReturn{val: nil, err: errors.New("No results returned that could determine a key mapping.")}
 	go func() {
-		for results != nil {
-			select {
-			case res = <-results:
-				stop <- true
-				results = nil
+		for rr := range results {
+			res = rr
+			for _, c := range stop {
+				c <- true
 			}
 		}
 	}()
 
 	// Wait for all the Redis connections to run their operations.
 	wg.Wait()
-
-	// Causes Goroutine above to complete in the event that no connection returned an accepted result.
-	results = nil
+	close(results)
 
 	return res.val, res.err
 }
@@ -183,24 +181,16 @@ func (r *ProxyConn) doInstance(
 
 	// Start the command on a new Goroutine.
 	// If we receive a return, test it and add a mapping if we have located the instance correctly.
-	// If so, send the return on the channel if it still exists.
+	// If we have, send the return on the results channel.
+	// NOTE: Incorrect canMap definitions causing more than one accepted return can cause panic on writing to a closed channel.
 	cmdDone := make(chan bool)
 	go func() {
 		if val, err := conn.Do(cmd.name, cmd.getArgs()...); canMap(val) {
-			// NOTE: A nil channel here means there was a return accepted from another Redis instance.
-			// This indicates a bad canMap definition. This check prevents a panic.
-			if res != nil {
-				r.KeyInstance[cmd.key] = pool
-				res <- RedisReturn{val: val, err: err}
-
-				for res != nil {
-					// If we sent a result, wait for the receiver to nullify the channel.
-					// This prevents a race condition where the wait group can be notified before the channel is read.
-				}
-			}
+			r.KeyInstance[cmd.key] = pool
+			res <- RedisReturn{val: val, err: err}
+		} else {
+			cmdDone <- true
 		}
-
-		cmdDone <- true
 	}()
 
 	// Wait for completion of this command or completion notification from any others.
