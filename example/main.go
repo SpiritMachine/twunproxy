@@ -14,7 +14,7 @@ const (
 	poolName string = "alpha"
 )
 
-// TwunRedisPool is a wrapper for the Redigo Redis pool; it satisfies the twunproxy.ConnGetter interface.
+// TwunPool is a wrapper for the Redigo Redis pool; it satisfies the twunproxy.ConnGetter interface.
 // In this way, Twunproxy is agnostic with regard to the Redis client library. Just wrap whatever you're using like this.
 type twunPool struct {
 	wrapped *redis.Pool
@@ -25,7 +25,7 @@ func (p *twunPool) Get() twunproxy.Conn {
 }
 
 // Instantiates connection pools based on the entries in the Twemproxy configuration file.
-// A different method could also be defined to instantiate pools for entries describing Unix domain socket connections.
+// A different method could also be defined to instantiate pools for entries describing Unix domain sockets.
 var getTwunPool twunproxy.CreatePool = func(desc string, auth string) twunproxy.ConnGetter {
 	tok := strings.Split(strings.Split(desc, " ")[0], ":")
 	return &twunPool{wrapped: newPool(strings.Join(tok[:2], ":"), auth)}
