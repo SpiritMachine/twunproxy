@@ -10,7 +10,7 @@ import (
 
 // The path to the Twemproxy configuration file and the name of the pool from which to get connections.
 const (
-	confPath string = "./nutcracker.conf"
+	confPath string = "./nutcracker.yml"
 	poolName string = "alpha"
 )
 
