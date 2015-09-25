@@ -70,7 +70,15 @@ func NewProxyConn(confPath, poolName string, keyCap int, create CreatePool) (*Pr
 
 	conf := m[poolName]
 	pools := make([]ConnGetter, len(conf.Servers))
+
+	// For each instance described in the Twemproxy configuration, create a connection pool.
+	// Execute a PING command to check that it is valid and available.
 	for i, def := range conf.Servers {
+		p := create(def, conf.Auth)
+		if _, err := p.Get().Do("PING"); err != nil {
+			return nil, err
+		}
+
 		pools[i] = create(def, conf.Auth)
 	}
 
