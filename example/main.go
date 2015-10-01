@@ -28,6 +28,7 @@ func (p *twunPool) Get() twunproxy.Conn {
 // A different method could also be defined to instantiate pools for entries describing Unix domain sockets.
 var getTwunPool twunproxy.CreatePool = func(desc string, auth string) twunproxy.ConnGetter {
 	tok := strings.Split(strings.Split(desc, " ")[0], ":")
+	fmt.Println("Creating pool.")
 	return &twunPool{wrapped: newPool(strings.Join(tok[:2], ":"), auth)}
 }
 
@@ -66,7 +67,7 @@ func main() {
 	fmt.Println("Waiting for list items...")
 
 	for {
-		if v, err := proxy.BLPop("test:list", 10*time.Second); err == nil {
+		if v, err := proxy.BLPop("test:list", 20*time.Second); err == nil {
 			fmt.Println(v)
 		} else {
 			panic(err)

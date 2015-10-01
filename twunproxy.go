@@ -79,7 +79,7 @@ func NewProxyConn(confPath, poolName string, keyCap int, create CreatePool) (*Pr
 			return nil, err
 		}
 
-		pools[i] = create(def, conf.Auth)
+		pools[i] = p
 	}
 
 	proxy := new(ProxyConn)
