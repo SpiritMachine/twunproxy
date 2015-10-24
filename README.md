@@ -18,3 +18,6 @@ Your Go program must have appropriate access to:
 - The Twemproxy configuration file.
 - The individual Redis instances being proxied.
 
+### Acknowledgements
+
+The fine engineers at [TXODDS](http://txodds.com/).
