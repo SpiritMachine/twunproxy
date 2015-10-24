@@ -53,7 +53,7 @@ type ProxyConn struct {
 // CreatePool is the signature for returning a connection pool based on the input Redis address and auth strings.
 type CreatePool func(string, string) ConnGetter
 
-// NewProxyConn is a proxy for all of the connections in a Twemproxy-fronted pool.
+// NewProxyConn creates a proxy for all of the connections in a Twemproxy-fronted pool.
 // Read the Twemproxy configuration file from the input path.
 // Instantiate a ProxyConn based on the input pool name.
 // Initialise a key-to-pool mapping with the input initial capacity.
@@ -75,7 +75,10 @@ func NewProxyConn(confPath, poolName string, keyCap int, create CreatePool) (*Pr
 	// Execute a PING command to check that it is valid and available.
 	for i, def := range conf.Servers {
 		p := create(def, conf.Auth)
-		if _, err := p.Get().Do("PING"); err != nil {
+
+		c := p.Get()
+		defer c.Close()
+		if _, err := c.Do("PING"); err != nil {
 			return nil, err
 		}
 
