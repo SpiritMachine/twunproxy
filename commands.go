@@ -39,6 +39,25 @@ func (r *ProxyConn) BLPop(key string, timeout time.Duration) (string, error) {
 	return "", errors.New("BLPOP timed out.")
 }
 
+// Promote turns slave instances into masters by issueing the "SLAVEOF NO ONE" command to each.
+// The number of successfully issued commands is returned.
+func (r *ProxyConn) Promote() (int, error) {
+	i := 0
+
+	for _, pool := range r.Pools {
+		c := pool.Get()
+		defer c.Close()
+
+		if _, err := c.Do("SLAVEOF", "NO", "ONE"); err != nil {
+			return i, err
+		}
+
+		i++
+	}
+
+	return i, nil
+}
+
 // BGSave runs a background save on each instance, sleeping for the input duration between each save.
 // The number of successfully issued BGSAVE commands is returned.
 // This is usefull to ensure that multiple large Redis instances don't fork at once to persist to disk.

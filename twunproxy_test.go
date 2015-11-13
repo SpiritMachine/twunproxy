@@ -24,13 +24,13 @@ func TestDoInstanceReturnsOnStopChannelMessage(t *testing.T) {
 
 	gotReturn := false
 	canMap := func(v interface{}) bool {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		gotReturn = true
 		return false
 	}
 
 	go proxy.doInstance(0, getRedisCmd(), canMap, results, stop, wg)
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 	stop <- true
 	wg.Wait()
 
@@ -132,6 +132,7 @@ func TestDoExecutesCommandOnAllProxyPools(t *testing.T) {
 
 	proxy := getMockProxy(mockPool1, mockPool2, mockPool3)
 	canMap := func(v interface{}) bool {
+		time.Sleep(500 * time.Millisecond)
 		return v != nil
 	}
 
