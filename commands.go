@@ -39,7 +39,7 @@ func (r *ProxyConn) BLPop(key string, timeout time.Duration) (string, error) {
 	return "", errors.New("BLPOP timed out.")
 }
 
-// Promote turns slave instances into masters by issueing the "SLAVEOF NO ONE" command to each.
+// Promote turns slave instances into masters by issuing the "SLAVEOF NO ONE" command to each.
 // The number of successfully issued commands is returned.
 func (r *ProxyConn) Promote() (int, error) {
 	i := 0
