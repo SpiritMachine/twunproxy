@@ -33,10 +33,9 @@ var getTwunPool twunproxy.CreatePool = func(desc string, auth string) twunproxy.
 }
 
 // From: https://godoc.org/github.com/garyburd/redigo/redis#Pool
+// MaxIdle for this pool is 0. This prevents any persistent connections.
 func newPool(server, password string) *redis.Pool {
 	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", server)
 			if err != nil {
@@ -49,10 +48,6 @@ func newPool(server, password string) *redis.Pool {
 				}
 			*/
 			return c, err
-		},
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
 		},
 	}
 }
