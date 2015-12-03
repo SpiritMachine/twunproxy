@@ -163,8 +163,9 @@ func setupMockPool(ctrl *gomock.Controller) (*MockConn, ConnGetter) {
 
 func getMockProxy(pools ...ConnGetter) *ProxyConn {
 	return &ProxyConn{
-		Pools:       pools,
-		KeyInstance: make(map[string]ConnGetter),
+		Pools:            pools,
+		KeyInstance:      make(map[string]ConnGetter),
+		keyInstanceMutex: new(sync.RWMutex),
 	}
 }
 

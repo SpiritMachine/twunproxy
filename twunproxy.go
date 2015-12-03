@@ -46,8 +46,9 @@ func (c *RedisCmd) getArgs() []interface{} {
 
 // ProxyConn maintains its own slice of Redis connection pools and mappings of Redis keys to pools.
 type ProxyConn struct {
-	Pools       []ConnGetter
-	KeyInstance map[string]ConnGetter
+	Pools            []ConnGetter
+	KeyInstance      map[string]ConnGetter
+	keyInstanceMutex *sync.RWMutex
 }
 
 // CreatePool is the signature for returning a connection pool based on the input Redis address and auth strings.
@@ -88,17 +89,27 @@ func NewProxyConn(confPath, poolName string, keyCap int, create CreatePool) (*Pr
 	proxy := new(ProxyConn)
 	proxy.Pools = pools
 	proxy.KeyInstance = make(map[string]ConnGetter, keyCap)
+	proxy.keyInstanceMutex = new(sync.RWMutex)
 	return proxy, nil
 }
 
-// Run the input command against the cluster.
+// Do runs the input command against the cluster.
 // If we already have a pool mapped to the command key, just run it there and return the result.
 // Otherwise set up Goroutines running against each connection in the pool.
 // The Goroutines will terminate upon the first successful Redis command return.
 // NOTE: Blocking commands should be issued with a timeout or risk blocking permanently.
 func (r *ProxyConn) Do(cmd *RedisCmd, canMap func(interface{}) bool) (interface{}, error) {
 	// If we have already determined the instance for this key, just run it.
-	if pool, ok := r.KeyInstance[cmd.key]; ok {
+
+	// Unlock as soon as possible.
+	pool, ok := func() (ConnGetter, bool) {
+		r.keyInstanceMutex.RLock()
+		defer r.keyInstanceMutex.RUnlock()
+		pool, ok := r.KeyInstance[cmd.key]
+		return pool, ok
+	}()
+
+	if ok {
 		conn := pool.Get()
 		defer conn.Close()
 		return conn.Do(cmd.name, cmd.getArgs()...)
@@ -164,6 +175,8 @@ func (r *ProxyConn) doInstance(
 	cmdDone := make(chan bool)
 	go func() {
 		if val, err := conn.Do(cmd.name, cmd.getArgs()...); canMap(val) {
+			r.keyInstanceMutex.Lock()
+			defer r.keyInstanceMutex.Unlock()
 			r.KeyInstance[cmd.key] = pool
 			res <- redisReturn{val: val, err: err}
 		} else {
